@@ -9,6 +9,8 @@
 
 /* 
 	Sistema de vendas simples em C - Caio Lomas - UNOESTE FIPP BSI 2º TERMO 
+	
+	NÃO CONSEGUI FAZER A EXCLUSÃO DE VENDAS!
 
 	NESTE TRABALHO EU PREZEI POR DEIXAR PELO MENOS AS CHAVES PRIMÁRIAS COM BOAS VERIFICAÇÕES
 	IMPEDINDO QUE SEJAM DIGITADOS CARACTERES E REPETINDO VERIFICAÇÕES
@@ -16,6 +18,8 @@
 	NÃO HÁ INSERÇÃO DE DADOS AUTOMÁTICA, BOM QUE TESTA AS VERIFICAÇÕES
 
 	O CÓDIGO ESTÁ SEPARADO POR COMENTÁRIOS DIVIDINDO AS FUNÇÕES DE BUSCA, CADASTRO, MENUS, BORDA, ETC.
+	
+	O MENU TEM UMA SETA PARA AVANÇAR PARA A PRÓXIMA PÁGINA
 	
 Lacunas a serem preenchidas no código: 
 1 - Ao usar scanf ou gets para o usuário dar entrada
@@ -243,7 +247,8 @@ char menu4 ()
 	printf("[3] Excluir clientes:");
 	gotoxy(51,17);
 	printf("[4] Excluir vendas:");
-
+	gotoxy(51,19);
+	printf("[ESC] Voltar:");
 	tecla=getch();
 	
 	return tecla;
@@ -312,6 +317,32 @@ char menu7 ()
 }
 
 /*Buscas*/
+int BuscaCodPV(struct VendasProd VP[TF], int TLVP,int cod)
+{
+	int i=0;
+	
+	while(i<TLVP && cod!=VP[i].codP)
+	i++;
+	
+	if(i<TLVP)
+	 return i;
+	 
+	else
+	 return -1;
+}
+
+int BuscaCodV(struct Vendas V[TF], int TLV,int cod)
+{
+	int i=0;
+	
+	while(i<TLV && cod!=V[i].codV)
+	i++;
+	if(i<TLV)
+	 return i;
+	else
+	 return -1;
+}
+
 int BuscaCodF(struct Fornecedor F[TF], int TL,int cod)
 {
 	int i=0;
@@ -378,6 +409,12 @@ int BuscaIndiceCPF(struct Cliente C[TF], int TLC,char aux[35])
             return i; 
          }
     }
+}
+
+void contando (int QTDIF[TF],int quantos,int &quantia)
+{
+	QTDIF[quantia]=quantos;
+	quantia++;
 }
 
 /*Verifica e transforma char em int*/
@@ -741,27 +778,58 @@ void VisuVenda(struct Vendas V[TF], int TLV)
     getch();
 }
 
-void relatorio (struct Vendas V[],struct Produtos P[],struct Fornecedor F[],struct VendasProd VP[],int TLV,int TLP,int TLF,int TLVP)
+void relatorio (struct Vendas V[],struct Produtos P[],struct Fornecedor F[],struct VendasProd VP[],int TLV,int TLP,int TLF,int TLVP,int QTDIF[])
 {
-	int i, linhaC = 11;
+	if(TLV==0)
+	{
+		limparMsg ();
+		gotoxy(24,5);
+		textcolor(10);
+		printf("ERRO: Nao ha vendas!");
+		getch();
+		return;
+	}
+	
+	int i,k,j=0,linhaC=11,colunaC,pos,pos2;
 
     textcolor(15);
-
+    
     for (i = 0; i < TLV; i++) 
 	{
-        gotoxy(8, linhaC);
-        printf("Cod:%d", V[i].CPF);
+		colunaC=4;
+		
+        gotoxy(colunaC, linhaC);
+        printf("Venda %d", V[i].codV);
         linhaC++;
-        gotoxy(8, linhaC);
-        printf("Nome: %-*s", larguraMaxima, C[i].nomeC);
+        gotoxy(colunaC, linhaC);
+        printf("Produtos:");
         linhaC++; 
-        gotoxy(8, linhaC);
-        printf("Qtd compras: %d", C[i].qtdC);
+        printf("Total R$%.2f", V[i].total);
         linhaC++;
-        gotoxy(8, linhaC);
-        printf("Total comprado: R$%.2f", C[i].valor);
+        gotoxy(colunaC, linhaC);
+        for(k=0;k<QTDIF[j];k++)
+	        {
+	        gotoxy(colunaC, linhaC);	
+	        printf("Cod %d", VP[k].codP);
+	        colunaC+4;
+	        pos = BuscaCodP(P,TLP,VP[k].codP);
+	        gotoxy(colunaC,linhaC);
+	        puts(P[pos].nomeP);
+	        colunaC+4;
+	        gotoxy(colunaC,linhaC);
+	        printf("	R$%.2f",VP[k].qtde*VP[k].valorU);
+	        printf("	%d",VP[k].qtde);
+	        pos2 = BuscaCodF(F,TLF,P[pos].codF);
+	        colunaC+8;
+	        gotoxy(colunaC,linhaC);
+	        puts(F[pos2].nomeF);
+	    	linhaC++;
+	    	}
+	    
+		colunaC=4;	
+	    gotoxy(colunaC,linhaC);		
+        j++;
         getch();
-        
         linhaC += 2;
         limparTela(linhaC);
     }
@@ -1171,7 +1239,7 @@ void cad_Cliente (struct Cliente C[TF], int &TLC, int TLP)
 
 /*Realizando as vendas*/ 
 
-void Vendendo (struct Vendas V[],struct VendasProd VP[],struct Cliente C[],struct Produtos P[],int &TLV,int &TLVP,int TLC, int TLP,int TLF)
+void Vendendo (struct Vendas V[],struct VendasProd VP[],struct Cliente C[],struct Produtos P[],int &TLV,int &TLVP,int TLC, int TLP,int TLF,int quantia,int QTDIF[])
 {
 	int i,linhaC=11,valido,existecpf,qtd,codprd,existecod,qtd2;
 	char aux[30],res;
@@ -1264,6 +1332,8 @@ void Vendendo (struct Vendas V[],struct VendasProd VP[],struct Cliente C[],struc
 	  			qtd = RepeteVerifica(linhaC,aux);
 	  			limparTela(linhaC);	
 	 		}
+	 	
+	 		contando(QTDIF,qtd,quantia);
 	 	
 			valortot=0;
 			
@@ -1854,6 +1924,312 @@ void AtualizaCliente (struct Cliente C[TF],int TLC)
 		limparTelaAnyway ();		
 }
 
+void ExcluiForn (struct Fornecedor F[TF],int &TLF)
+{
+		if(TLF==0)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Nao ha fornecedores cadastrados!");
+			getch();
+			return;
+		}
+		
+		int linhaC=11,cod,existe,i;
+		char aux[35];
+	
+		limparMsg ();
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Informe o codigo do fornecedor");
+		textcolor(15);
+		gotoxy(8,linhaC);
+		fflush(stdin);
+		gets(aux);
+		cod = verificaINT(aux); 
+		while(cod==-1)
+	 	{
+	 		fflush(stdin);
+	  		cod = RepeteVerifica(linhaC,aux);
+	  		limparTela(linhaC);	
+	 	}
+	 	
+		linhaC++;
+		
+		existe = BuscaCodF(F,TLF,cod);
+		
+		if(existe==-1)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Fornecedor nao cadastrado!");
+			getch();
+			return;
+		}
+			
+		else
+		{
+			for(i=existe;i<TLF-1;i++)
+			{
+				F[i].codF=F[i+1].codF;
+				strcpy(F[i].nomeF,F[i+1].nomeF);
+				strcpy(F[i].Cidade,F[i+1].Cidade);
+			}
+			
+			TLF--;
+		}	
+	
+		limparMsg ();	
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Exclusao feita com sucesso!");
+		getch();
+		
+		limparTelaAnyway ();	
+}
+
+void ExcluiProd (struct Produtos P[TF],int &TLP)
+{
+		if(TLP==0)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Nao ha produtos cadastrados!");
+			getch();
+			return;
+		}
+		
+		int linhaC=11,cod,existe,i;
+		char aux[35];
+	
+		limparMsg ();
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Informe o codigo do produto");
+		textcolor(15);
+		gotoxy(8,linhaC);
+		fflush(stdin);
+		gets(aux);
+		cod = verificaINT(aux); 
+		while(cod==-1)
+	 	{
+	 		fflush(stdin);
+	  		cod = RepeteVerifica(linhaC,aux);
+	  		limparTela(linhaC);	
+	 	}
+	 	
+		linhaC++;
+		
+		existe = BuscaCodP(P,TLP,cod);
+		
+		if(existe==-1)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Produto nao cadastrado!");
+			getch();
+			return;
+		}
+		
+			else
+		{
+			for(i=existe;i<TLP-1;i++)
+			{
+				P[i].codP=P[i+1].codP;
+				strcpy(P[i].nomeP,P[i+1].nomeP);
+				P[i].Estoque=P[i+1].Estoque;
+				P[i].preco=P[i+1].preco;
+				P[i].DTV.dia=P[i+1].DTV.dia;
+				P[i].DTV.mes=P[i+1].DTV.mes;
+				P[i].DTV.ano=P[i+1].DTV.ano;
+				P[i].codF=P[i+1].codF;
+			}
+			
+			TLP--;
+		}	
+	
+		limparMsg ();	
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Exclusao feita com sucesso!");
+		getch();
+		
+		limparTelaAnyway ();
+}
+
+void ExcluiCliente (struct Cliente C[TF],int &TLC)
+{
+			if(TLC==0)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Nao ha clientes cadastrados!");
+			getch();
+			return;
+		}
+		
+		int linhaC=11,valido,existe,i,j;
+		char aux[15];
+		
+		limparMsg ();
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Informe o CPF do cliente - apenas numeros");
+		textcolor(15);
+		gotoxy(8,linhaC);
+		fflush(stdin);
+		gets(aux);	
+		valido = validaCPF(aux);
+		
+		while(valido==-1)
+	 	{
+	 		limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: CPF invalido");
+			linhaC++;
+			textcolor(15);
+			gotoxy(8,linhaC);
+	 		fflush(stdin);
+	 		gets(aux);
+	  		valido = validaCPF(aux);
+	  		limparTela(linhaC);	
+	 	}
+	 		
+	 		formataCPF(aux);
+	 		existe = BuscaCPF(C,TLC,aux);
+	 		if(existe==-1)
+	 		{
+	 				limparMsg ();
+					gotoxy(24,5);
+					textcolor(10);
+					printf("ERRO: Cliente nao cadastrado!");
+					getch();
+					return;
+	 		}
+		
+		
+		else
+		{
+			for(i=existe;i<TLC-1;i++)
+			{
+				strcpy(C[i].CPF,C[i+1].CPF);
+				strcpy(C[i].nomeC,C[i+1].nomeC);
+				C[i].qtdC=C[i+1].qtdC;
+				C[i].valor=C[i+1].valor;	
+			}
+			
+			TLC--;
+		}	
+	
+		limparMsg ();	
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Exclusao feita com sucesso!");
+		getch();
+		
+		limparTelaAnyway ();
+}
+
+/*
+void ExcluiVenda (struct Vendas V[],struct VendasProd VP[],struct Cliente C[],struct Produtos P[],int &TLV,int &TLVP,int TLC,int TLP)
+{
+			if(TLV==0)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Nao ha vendas!");
+			getch();
+			return;
+		}
+		
+		int linhaC=11,cod,existe,i,j,k;
+		char aux[35],op;
+	
+		limparMsg ();
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Informe o codigo da venda");
+		textcolor(15);
+		gotoxy(8,linhaC);
+		fflush(stdin);
+		gets(aux);
+		cod = verificaINT(aux); 
+		while(cod==-1)
+	 	{
+	 		fflush(stdin);
+	  		cod = RepeteVerifica(linhaC,aux);
+	  		limparTela(linhaC);	
+	 	}
+	 	
+		linhaC++;
+		
+		existe = BuscaCodV(V,TLV,cod);
+		
+		if(existe==-1)
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("ERRO: Venda inexistente!");
+			getch();
+			return;
+		}
+		
+		else
+		{
+			limparMsg ();
+			gotoxy(24,5);
+			textcolor(10);
+			printf("Confirmar exclusao? S/N");
+			textcolor(15);
+			gotoxy(8,linhaC);
+			fflush(stdin);
+			op=toupper(getch());	
+			
+			if(op!='S')
+			{
+				limparMsg ();
+				gotoxy(24,5);
+				textcolor(10);
+				printf("Exclusao cancelada");
+				getch();
+				return;	
+			}
+			
+			else
+			{
+				for(i = existe;i<TLV-1;i++)
+		        {
+		            V[i].codV = V[i+1].codV-1;
+		            strcpy(V[i].CPF,V[i+1].CPF);
+		            V[i].DTV.dia = V[i+1].DTV.dia;
+		            V[i].DTV.mes = V[i+1].DTV.mes;
+		            V[i].DTV.ano = V[i+1].DTV.ano;
+		            V[i].total = V[i+1].total;
+		        }
+				
+				BuscaCodPV(struct VendasProd[TF], int TLVP,int cod)
+				
+				TLV--;
+			}
+		}
+		
+		limparMsg ();	
+		gotoxy(24,5);
+		textcolor(10);
+		printf("Exclusao feita com sucesso!");
+		getch();
+		
+		limparTelaAnyway ();
+}*/
+
 void Executar ()
 {
 	char op,opR;
@@ -1864,7 +2240,7 @@ void Executar ()
 	struct Vendas V[TF];
 	struct VendasProd VP[TF];
 	
-	int TLF=0,TLP=0,TLC=0,TLV=0,TLVP=0;
+	int TLF=0,TLP=0,TLC=0,TLV=0,TLVP=0,QTDIF[TF],quantia=0;
 	
 	do
 	
@@ -1893,9 +2269,8 @@ void Executar ()
 			cad_Cliente(C,TLC,TLP);
 			break;
 			
-			case 'D':limparMsg ();	
-			gotoxy(24,5);
-			textcolor(10);
+			case 'D':textcolor(15);
+			gotoxy(14,9);
 			printf("Relatorio Simples.");
 		
 			opR=menu2();
@@ -1910,16 +2285,14 @@ void Executar ()
 					VisuCli(C,TLC);			
 				break;
 			 
-			case 'E':limparMsg ();	
-			gotoxy(24,5);
-			textcolor(10);
+			case 'E':textcolor(15);
+			gotoxy(14,9);
 			printf("Venda de produtos.");
-			Vendendo(V,VP,C,P,TLV,TLVP,TLC,TLP,TLF);
+			Vendendo(V,VP,C,P,TLV,TLVP,TLC,TLP,TLF,quantia,QTDIF);
 			break;
 			
-			case 'F':limparMsg ();	
-			gotoxy(24,5);
-			textcolor(10);
+			case 'F':textcolor(15);
+			gotoxy(14,9);
 			printf("Atualizar dados.");
 			
 			opR=menu3();	
@@ -1941,11 +2314,36 @@ void Executar ()
 			}while(opR!=27);		
 			break;
 			
-			case 'H':limparMsg ();	
-			gotoxy(24,5);
-			textcolor(10);
+			case 'G':textcolor(15);
+			gotoxy(14,9);
+			printf("Excluir dados.");
+			
+			opR=menu4();
+			
+			do
+			{
+				if(opR=='1')
+					ExcluiForn(F,TLF);
+				
+				else if(opR=='2')
+					ExcluiProd(P,TLP);
+				
+				else if(opR=='3')
+					ExcluiCliente(C,TLC);	
+					
+				/*else if(opR=='4')
+					ExcluiVenda(V,VP,C,P,TLV,TLVP,TLC,TLP);*/
+					
+				opR=menu4();	
+			
+			}while(opR!=27);
+			
+			break;
+			
+			case 'H':textcolor(15);
+			gotoxy(14,9);
 			printf("Relatorio geral.");
-			relatorio(V,P,F,VP,TLV,TLP,TLF,TLVP);
+			relatorio(V,P,F,VP,TLV,TLP,TLF,TLVP,QTDIF);
 			break;
 		}
 		
